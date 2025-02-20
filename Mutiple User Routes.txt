@@ -1,0 +1,37 @@
+@extends(auth()->user()->role == 'pharmacist' ? 'pharmacist.layouts.master' : 'backend.layouts.master')
+
+
+Create
+{{ route(auth()->user()->role == 'officer' ? 'officer.patient.create' : 'admin.patient.create') }}
+
+Store
+{{ route(auth()->user()->role == 'officer' ? 'officer.patient.store' : 'admin.patient.store') }}
+
+Index
+{{ route(auth()->user()->role == 'officer' ? 'officer.patient.index' : 'admin.patient.index') }}
+
+Edit
+{{ route(auth()->user()->role == 'officer' ? 'officer.patient.edit' : 'admin.patient.edit', $patient->id) }}
+
+Delete
+{{ route(auth()->user()->role == 'officer' ? 'officer.patient.destroy' : 'admin.patient.destroy', $patient->id) }}
+
+update
+{{ auth()->user()->role == 'admin' ? route('admin.patient.update', $patient->id) : route('pharmacist.patient.update', $patient->id) }}
+
+Route::middleware(['auth', 'Admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::resource('patient', AdminPatientController::class);
+});
+
+Route::middleware(['auth'])->prefix('pharmacist')->name('pharmacist.')->group(function () {
+    Route::resource('patient', AdminMedicineController::class);
+});
+Route::middleware(['auth'])->prefix('officer')->name('officer.')->group(function () {
+    Route::resource('patient', AdminPatientController::class);
+});
+
+
+
+Controller Redirect
+$redirectRoute = auth()->user()->role == 'pharmacist' ? 'pharmacist.patient.index' : 'admin.patient.index';
+ return redirect()->route($redirectRoute)->with('success', "PatientsList added successfully.");
