@@ -1,0 +1,46 @@
+Route
+Route::get('/xml-data', [PropertyComtroller::class, 'fetchCityData']);
+Controller
+<?php
+namespace App\Http\Controllers;use Illuminate\Support\Facades\Http;use Illuminate\Http\Request;
+class PropertyComtroller extends Controller{    public function fetchCityData()    {        $accessCode = '@Ny@pR()peRtie%24'; // URL-encoded        $groupCode = '5110';        $cityID = '54788';
+        $url = "https://webapi.goyzer.com/Company_enterprise.asmx/GetCity?AccessCode={$accessCode}&GroupCode={$groupCode}&CityID={$cityID}&StateID=";
+        $response = Http::get($url);
+        if ($response->successful()) {            $xmlString = $response->body();
+
+
+            // Check if response is valid XML            libxml_use_internal_errors(true);            $xml = simplexml_load_string($xmlString);
+            if ($xml === false) {                return response()->json(['error' => 'Invalid XML format'], 500);            }
+            // Convert XML object to array            $data = json_decode(json_encode($xml), true);
+            return view('city-data', compact('data'));        }
+        return response()->json(['error' => 'Failed to fetch data'], 500);    }
+}
+
+Blade
+    @if(isset($data['GetCityData']))        <table>            <thead>                <tr>                    <th>City ID</th>                    <th>State ID</th>                    <th>Description</th>                    <th>Date Time Stamp</th>                </tr>            </thead>            <tbody>                @php                    $city = $data['GetCityData'];                @endphp                <tr>                    <td>{{ $city['CityID'] ?? 'N/A' }}</td>                    <td>{{ $city['StateID'] ?? 'N/A' }}</td>                    <td>{{ $city['Description'] ?? 'N/A' }}</td>                    <td>{{ $city['DateTimeStamp'] ?? 'N/A' }}</td>                </tr>            </tbody>        </table>    @else        <p>No city data available.</p>    @endif
+
+
+
+API URL
+https://webapi.goyzer.com/Company_enterprise.asmx/GetCity?AccessCode=@Ny@pR()peRtie%24&GroupCode=5110&CityID=54788&StateID=
+
+
+API RESPONSE
+https://webapi.goyzer.com/Company_enterprise.asmx/GetCity?AccessCode=@Ny@pR()peRtie%24&GroupCode=5110&CityID=54788&StateID=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
