@@ -1,0 +1,55 @@
+Controller
+            
+            
+            // Send Email with PDF attachments
+            try {
+                Mail::to($insurance->email)->send(new InsuranceMail($insurance->toArray(), $filePaths['certificate'], $filePaths['receipt']));
+            } catch (\Exception $mailException) {
+                return response()->json([
+                    'message' => 'Email sending failed',
+                    'error' => $mailException->getMessage()
+                ], 500);
+            }
+
+
+
+Mail.php
+
+<?php
+
+namespace App\Mail;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class InsuranceMail extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    public array $insuranceDetails;
+    public string $certificatePath;
+    public string $receiptPath;
+
+    public function __construct(array $insuranceDetails, string $certificatePath, string $receiptPath)
+    {
+        $this->insuranceDetails = $insuranceDetails;
+        $this->certificatePath = $certificatePath;
+        $this->receiptPath = $receiptPath;
+    }
+
+    public function build()
+    {
+        return $this->subject('Your Insurance Policy Details')
+                    ->view('emails.insurance')
+                    ->with(['insurance' => $this->insuranceDetails])
+                    ->attach($this->certificatePath, [
+                        'as' => 'Insurance_Certificate.pdf',
+                        'mime' => 'application/pdf',
+                    ])
+                    ->attach($this->receiptPath, [
+                        'as' => 'Insurance_Receipt.pdf',
+                        'mime' => 'application/pdf',
+                    ]);
+    }
+}
