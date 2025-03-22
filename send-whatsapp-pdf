@@ -1,0 +1,25 @@
+
+
+            $filePaths = [
+                'certificate' => public_path("uploads/pdf/insurance_certificate_{$insurance->policy_number}.pdf"),
+                'receipt' => public_path("uploads/receipt/insurance_receipt_{$insurance->policy_number}.pdf"),
+            ];
+
+            // Send WhatsApp message with attachments
+            $whatsappResponses = [];
+            foreach ($filePaths as $type => $filePath) {
+                if (!file_exists($filePath)) {
+                    return response()->json(['error' => "$type file not found"], 500);
+                }
+    
+                $whatsappResponses[$type] = Http::withHeaders([
+                    'accept' => 'application/json',
+                    'authorization' => 'Bearer nLWDqKRWClBOZxbsK5I2v1yuzAtZrGo2',
+                    'content-type' => 'application/json',
+                ])->post('https://gate.whapi.cloud/messages/document', [
+                    'to' => '919479819774',
+                    'filename' => basename($filePath),
+                    'caption' => $insurance->name,
+                    'media' => "data:application/pdf;name=document.pdf;base64," . base64_encode(file_get_contents($filePath)),
+                ]);
+            }
