@@ -1,0 +1,70 @@
+    public function downloadReceipt($policyId)
+    {
+        // Fetch the image and convert it to base64
+        $imagePath = public_path('assets/images/logo.png');
+        $imageData = base64_encode(file_get_contents($imagePath));
+        $imageType = pathinfo($imagePath, PATHINFO_EXTENSION);
+        $base64Image = 'data:image/' . $imageType . ';base64,' . $imageData;
+
+        // Bottom Image
+        $bottomLogoPath = public_path('assets/images/bottomlogo.png');
+        $bottomLogoData = base64_encode(file_get_contents($bottomLogoPath));
+        $bottomLogoType = pathinfo($bottomLogoPath, PATHINFO_EXTENSION);
+        $base64BottomLogo = 'data:image/' . $bottomLogoType . ';base64,' . $bottomLogoData;
+
+        // Fetch user plan details
+        $insurance = Insurance::where('policy_number', $policyId)->first();
+        $payment = Payment::where('policy_Id', $policyId)->first();
+        $company = Company::where('id', $insurance->company_id)->first();
+        if (!$insurance) {
+            return response()->json(['error' => 'Invoice not found'], 404);
+        }
+
+        // Fetch QR Code
+        $qrImagePath = public_path('uploads/insurance/' . $insurance->qr_code);
+        $qrImageData = base64_encode(file_get_contents($qrImagePath));
+        $qrImageType = pathinfo($qrImagePath, PATHINFO_EXTENSION);
+        $qrImage = 'data:image/' . $qrImageType . ';base64,' . $qrImageData;
+
+        // Fetch Car Image
+        $carImagePath = public_path('uploads/insurance/' . $insurance->car_image);
+        $carImageData = base64_encode(file_get_contents($carImagePath));
+        $carImageType = pathinfo($carImagePath, PATHINFO_EXTENSION);
+        $carImage = 'data:image/' . $carImageType . ';base64,' . $carImageData;
+
+        $user = auth()->user();
+
+        // Render view as HTML string
+        $html = view('receipt.index', compact('insurance', 'user', 'base64Image', 'qrImage', 'base64BottomLogo', 'carImage','company','payment'))->render();
+
+        // PDF Options
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isPhpEnabled', true);
+        $options->set('isRemoteEnabled', true); // Enable remote images
+
+        // Initialize Dompdf
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        // Define PDF file name and path
+        $fileName = 'insurance_receipt_' . $policyId . '.pdf';
+        $directory = public_path('uploads/receipt/'); // Ensure this matches your storage location
+        $filePath = $directory . $fileName;
+
+        // Ensure the directory exists
+        if (!File::exists($directory)) {
+            File::makeDirectory($directory, 0777, true, true);
+        }
+
+        // Save the PDF file
+        file_put_contents($filePath, $dompdf->output());
+
+        return response()->json([
+            'status' => true,
+            'message' => 'PDF saved successfully',
+            'path' => asset('uploads/receipt/' . $fileName) // Publicly accessible URL
+        ]);
+    }
