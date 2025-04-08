@@ -2,68 +2,68 @@ Commands
 composer require picqer/php-barcode-generator
 
 Controller
+
+
 <?php
 
 namespace App\Http\Controllers\Barcode;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Crypt;
-use Picqer\Barcode\BarcodeGeneratorPNG;
+use Illuminate\Http\Request;
 
 class ProductBarcodeController extends Controller
 {
-    public function index(string $encryptedId)
+    public function index(string $productCode)
     {
-        try {
-            $productId = Crypt::decrypt($encryptedId);
-        } catch (\Exception $e) {
-            abort(403, 'Invalid or tampered ID.');
-        }
+        $barcodeData = $productCode; // decrypt($encryptedId) if needed
 
-        $generator = new BarcodeGeneratorPNG();
-        $barcode = $generator->getBarcode($productId, $generator::TYPE_CODE_128);
+        // Generate barcode PNG
+        $generator = new \Picqer\Barcode\BarcodeGeneratorPNG();
+        $barcode = $generator->getBarcode($barcodeData, $generator::TYPE_CODE_128);
 
-        // Create a base image
+        // Create image from barcode
         $barcodeImage = imagecreatefromstring($barcode);
 
         // Get dimensions
         $barcodeWidth = imagesx($barcodeImage);
         $barcodeHeight = imagesy($barcodeImage);
-        $textHeight = 20;
+        $fontHeight = 20;
 
-        // Create a new image with extra space for the text
-        $finalImage = imagecreatetruecolor($barcodeWidth, $barcodeHeight + $textHeight);
+        // Create new image with extra height for text
+        $finalImage = imagecreatetruecolor($barcodeWidth, $barcodeHeight + $fontHeight + 10);
 
-        // Set white background
+        // Set background to white
         $white = imagecolorallocate($finalImage, 255, 255, 255);
-        imagefill($finalImage, 0, 0, $white);
+        imagefilledrectangle($finalImage, 0, 0, $barcodeWidth, $barcodeHeight + $fontHeight + 10, $white);
 
-        // Copy barcode onto new image
+        // Copy barcode into new image
         imagecopy($finalImage, $barcodeImage, 0, 0, 0, 0, $barcodeWidth, $barcodeHeight);
 
-        // Add text (Product ID) under barcode
+        // Add text (barcode value)
         $black = imagecolorallocate($finalImage, 0, 0, 0);
-        $fontSize = 3;
-        $textWidth = imagefontwidth($fontSize) * strlen($productId);
-        $x = ($barcodeWidth - $textWidth) / 2;
-        $y = $barcodeHeight + 2;
+        $fontSize = 5; // built-in font size
+        $textWidth = imagefontwidth($fontSize) * strlen($barcodeData);
+        $textX = ($barcodeWidth - $textWidth) / 2;
+        $textY = $barcodeHeight + 5;
+        imagestring($finalImage, $fontSize, $textX, $textY, $barcodeData, $black);
 
-        imagestring($finalImage, $fontSize, $x, $y, $productId, $black);
-
-        // Output image as PNG
+        // Capture output
         ob_start();
         imagepng($finalImage);
         $imageData = ob_get_clean();
 
-        // Cleanup
+        // Free memory
         imagedestroy($barcodeImage);
         imagedestroy($finalImage);
 
+        // Return image with download headers
         return response($imageData)
             ->header('Content-Type', 'image/png')
-            ->header('Content-Disposition', 'inline; filename="barcode_'.$productId.'.png"');
+            ->header('Content-Disposition', 'attachment; filename="barcode_with_text.png"');
     }
+
 }
+
 
 
 
