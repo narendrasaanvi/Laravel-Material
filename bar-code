@@ -7,7 +7,6 @@ Controller
 namespace App\Http\Controllers\Barcode;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Picqer\Barcode\BarcodeGeneratorPNG;
 
@@ -24,11 +23,48 @@ class ProductBarcodeController extends Controller
         $generator = new BarcodeGeneratorPNG();
         $barcode = $generator->getBarcode($productId, $generator::TYPE_CODE_128);
 
-        return response($barcode)
+        // Create a base image
+        $barcodeImage = imagecreatefromstring($barcode);
+
+        // Get dimensions
+        $barcodeWidth = imagesx($barcodeImage);
+        $barcodeHeight = imagesy($barcodeImage);
+        $textHeight = 20;
+
+        // Create a new image with extra space for the text
+        $finalImage = imagecreatetruecolor($barcodeWidth, $barcodeHeight + $textHeight);
+
+        // Set white background
+        $white = imagecolorallocate($finalImage, 255, 255, 255);
+        imagefill($finalImage, 0, 0, $white);
+
+        // Copy barcode onto new image
+        imagecopy($finalImage, $barcodeImage, 0, 0, 0, 0, $barcodeWidth, $barcodeHeight);
+
+        // Add text (Product ID) under barcode
+        $black = imagecolorallocate($finalImage, 0, 0, 0);
+        $fontSize = 3;
+        $textWidth = imagefontwidth($fontSize) * strlen($productId);
+        $x = ($barcodeWidth - $textWidth) / 2;
+        $y = $barcodeHeight + 2;
+
+        imagestring($finalImage, $fontSize, $x, $y, $productId, $black);
+
+        // Output image as PNG
+        ob_start();
+        imagepng($finalImage);
+        $imageData = ob_get_clean();
+
+        // Cleanup
+        imagedestroy($barcodeImage);
+        imagedestroy($finalImage);
+
+        return response($imageData)
             ->header('Content-Type', 'image/png')
-            ->header('Content-Disposition', 'attachment; filename="product_' . $productId . '.png"');
+            ->header('Content-Disposition', 'inline; filename="barcode_'.$productId.'.png"');
     }
 }
+
 
 
 Blade
