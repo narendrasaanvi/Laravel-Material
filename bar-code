@@ -1,0 +1,40 @@
+Commands
+composer require picqer/php-barcode-generator
+
+Controller
+<?php
+
+namespace App\Http\Controllers\Barcode;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
+use Picqer\Barcode\BarcodeGeneratorPNG;
+
+class ProductBarcodeController extends Controller
+{
+    public function index(string $encryptedId)
+    {
+        try {
+            $productId = Crypt::decrypt($encryptedId);
+        } catch (\Exception $e) {
+            abort(403, 'Invalid or tampered ID.');
+        }
+
+        $generator = new BarcodeGeneratorPNG();
+        $barcode = $generator->getBarcode($productId, $generator::TYPE_CODE_128);
+
+        return response($barcode)
+            ->header('Content-Type', 'image/png')
+            ->header('Content-Disposition', 'attachment; filename="product_' . $productId . '.png"');
+    }
+}
+
+
+Blade
+<a href="{{ route(getUserPrefix().'.product.barcode', $encryptedId) }}" class="dropdown-item" download>
+  <i class="fas fa-barcode"></i> {{ __('Bar Code') }}
+</a>
+
+Route
+Route::get('product-barcode/{id}', [ProductBarcodeController::class, 'index'])->name('admin.product.barcode');
